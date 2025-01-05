@@ -1,0 +1,42 @@
+# Ignore all .env files
+.env
+
+# Allow default .env file
+!.env.default
+
+# Python-related ignores
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+*.venv/
+*.virtualenv/
+env/
+.venv/
+.venv
+
+# Docker-related ignores
+*.log
+*.swp
+Dockerfile.*
+docker-compose.override.yml
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Ignore editor-specific files
+.idea/
+.vscode/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
