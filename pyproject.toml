@@ -1,10 +1,11 @@
 [tool.poetry]
-name = "syn-pg"
+name = "syn-pg-tool"
 version = "0.1.0"
 description = "A Python application for generating synthetic data using GPT and PostgreSQL."
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Tim Scongack <tim.scongack@gmail.com>"]
 readme = "README.md"
 license = "Apache-2.0"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -13,7 +14,7 @@ python-dotenv = "^1.0.0"
 openai = "^0.27.4"
 apscheduler = "^3.9.1"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 pytest-mock = "^3.10.0"
 flake8 = "^6.1.0"
