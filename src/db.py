@@ -41,11 +41,11 @@ class Database:
         if not self.connection:
             raise ConnectionError("Database connection is not established.")
 
-        query = """
-            SELECT column_name, data_type
-            FROM information_schema.columns
-            WHERE table_name = %s AND table_schema = 'public';
-        """
+        query = (
+            "SELECT column_name, data_type "
+            "FROM information_schema.columns "
+            "WHERE table_name = %s AND table_schema = 'public';"
+        )
         with self.connection.cursor() as cur:
             cur.execute(query, (table_name,))
             return cur.fetchall()
@@ -55,11 +55,11 @@ class Database:
         if not self.connection:
             raise ConnectionError("Database connection is not established.")
 
-        query = """
-            SELECT table_name, column_name, data_type
-            FROM information_schema.columns
-            WHERE table_schema = 'public';
-        """
+        query = (
+            "SELECT table_name, column_name, data_type "
+            "FROM information_schema.columns "
+            "WHERE table_schema = 'public';"
+        )
         with self.connection.cursor() as cur:
             cur.execute(query)
             results = cur.fetchall()

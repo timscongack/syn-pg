@@ -2,6 +2,7 @@ import openai
 from typing import List
 import os
 from dotenv import load_dotenv
+import ast
 
 load_dotenv()
 
@@ -14,15 +15,7 @@ class GPTQueryGenerator:
         openai.api_key = self.api_key
 
     def construct_prompt(self, ddl: List[str]) -> str:
-        """
-        Construct a prompt for GPT based on the database DDL.
-
-        Args:
-            ddl (List[str]): List of DDL statements describing the database schema.
-
-        Returns:
-            str: The constructed prompt for GPT.
-        """
+        """Construct a prompt for GPT based on the database DDL."""
         prompt = (
             "You are a SQL expert. Given the following database schema definitions (DDL), "
             "generate synthetic SQL queries to mimic realistic database operations. "
@@ -36,20 +29,11 @@ class GPTQueryGenerator:
         )
         for table_ddl in ddl:
             prompt += f"{table_ddl}\n\n"
-
         prompt += "Generate the SQL queries now:"
         return prompt
 
     def generate_queries(self, ddl: List[str]) -> List[str]:
-        """
-        Generate synthetic SQL queries using OpenAI's GPT model.
-
-        Args:
-            ddl (List[str]): List of DDL statements describing the database schema.
-
-        Returns:
-            List[str]: List of synthetic SQL queries.
-        """
+        """Generate synthetic SQL queries using OpenAI's GPT model."""
         prompt = self.construct_prompt(ddl)
         try:
             response = openai.Completion.create(
@@ -59,8 +43,13 @@ class GPTQueryGenerator:
                 temperature=0.7,
                 n=1
             )
-            queries = response['choices'][0]['text'].strip()
-            return eval(queries)
+            raw_queries = response["choices"][0]["text"].strip()
+            queries = ast.literal_eval(raw_queries)  # Safer than eval()
+            if not isinstance(queries, list):
+                raise ValueError("Response is not a list of SQL queries.")
+            return queries
+        except (SyntaxError, ValueError) as e:
+            raise ValueError(f"Malformed response from OpenAI: {e}")
         except Exception as e:
             print(f"Error generating queries: {e}")
             return []

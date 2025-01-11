@@ -36,11 +36,9 @@ class TestDatabase(unittest.TestCase):
         columns = db.get_table_columns("test_table")
         self.assertEqual(columns, [("id", "integer"), ("name", "text")])
         mock_cursor.execute.assert_called_once_with(
-            """
-            SELECT column_name, data_type
-            FROM information_schema.columns
-            WHERE table_name = %s AND table_schema = 'public';
-            """,
+            "SELECT column_name, data_type "
+            "FROM information_schema.columns "
+            "WHERE table_name = %s AND table_schema = 'public';",
             ("test_table",),
         )
 
@@ -70,11 +68,9 @@ class TestDatabase(unittest.TestCase):
         }
         self.assertEqual(table_columns, expected)
         mock_cursor.execute.assert_called_once_with(
-            """
-            SELECT table_name, column_name, data_type
-            FROM information_schema.columns
-            WHERE table_schema = 'public';
-            """
+            "SELECT table_name, column_name, data_type "
+            "FROM information_schema.columns "
+            "WHERE table_schema = 'public';"
         )
 
     @patch("src.db.psycopg2.connect")
