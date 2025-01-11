@@ -1,30 +1,59 @@
 import unittest
-from unittest.mock import patch
-from .gpt import GPTQueryGenerator
+from unittest.mock import MagicMock, patch
+from src.gpt import GPTQueryGenerator
+
 
 class TestGPTQueryGenerator(unittest.TestCase):
-    @patch("openai.Completion.create")
-    def test_generate_queries(self, mock_openai_create):
-        mock_response = {
-            "choices": [
-                {
-                    "text": "['INSERT INTO users (id, name) VALUES (1, \"Alice\");', 'DELETE FROM users WHERE id = 1;']"
-                }
-            ]
+    @patch("src.gpt.openai")
+    def test_generate_queries_good_response(self, mock_openai):
+        """Test generating queries with a well-formed response."""
+        mock_openai.ChatCompletion.create.return_value = {
+            "choices": [{"message": {"content": "['INSERT INTO test (id) VALUES (1);']"}}]
         }
-        mock_openai_create.return_value = mock_response
-        gpt_generator = GPTQueryGenerator()
-        ddl = ["CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(100));"]
-        queries = gpt_generator.generate_queries(ddl)
-        mock_openai_create.assert_called_once()
-        self.assertEqual(
-            queries,
-            ['INSERT INTO users (id, name) VALUES (1, "Alice");', 'DELETE FROM users WHERE id = 1;']
-        )
 
-    def test_construct_prompt(self):
-        gpt_generator = GPTQueryGenerator()
-        ddl = ["CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(100));"]
-        prompt = gpt_generator.construct_prompt(ddl)
-        self.assertIn("CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(100));", prompt)
-        self.assertIn("Generate the SQL queries now:", prompt)
+        generator = GPTQueryGenerator()
+
+        ddl = ["CREATE TABLE test (id SERIAL PRIMARY KEY);"]
+
+        queries = generator.generate_queries(ddl)
+
+        print(f"Generated queries: {queries}")
+        self.assertIn("INSERT INTO test (id) VALUES (1);", queries)
+
+        mock_openai.ChatCompletion.create.assert_called_once()
+
+    @patch("src.gpt.openai")
+    def test_generate_queries_malformed_response(self, mock_openai):
+        """Test generating queries with a malformed response."""
+        mock_openai.ChatCompletion.create.return_value = {
+            "choices": [{"message": {"content": "INVALID_RESPONSE"}}]
+        }
+
+        generator = GPTQueryGenerator()
+
+        ddl = ["CREATE TABLE test (id SERIAL PRIMARY KEY);"]
+
+        with self.assertRaises(ValueError) as context:
+            generator.generate_queries(ddl)
+
+        self.assertIn("Malformed response", str(context.exception))
+        mock_openai.ChatCompletion.create.assert_called_once()
+
+    @patch("src.gpt.openai")
+    def test_generate_queries_caller(self, mock_openai):
+        """Test that the caller sends the correct data to OpenAI."""
+        generator = GPTQueryGenerator()
+
+        ddl = ["CREATE TABLE test (id SERIAL PRIMARY KEY);"]
+
+        generator.generate_queries(ddl)
+
+        mock_openai.ChatCompletion.create.assert_called_once()
+        call_args = mock_openai.ChatCompletion.create.call_args[1]
+
+        self.assertIn("messages", call_args)
+        self.assertEqual(call_args["messages"][0]["content"], ddl[0])
+
+
+if __name__ == "__main__":
+    unittest.main()

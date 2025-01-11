@@ -1,11 +1,13 @@
 import os
-from typing import List, Optional
+import logging
+from typing import List, Dict, Optional
 import psycopg2
 from psycopg2.extensions import connection
-from psycopg2 import sql
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
 
 class Database:
     def __init__(self) -> None:
@@ -30,63 +32,48 @@ class Database:
                 password=self.password,
                 database=self.database,
             )
-            print("Database connection established.")
+            logging.info("Database connection established.")
         except Exception as e:
             raise ConnectionError(f"Failed to connect to the database: {e}")
 
-    def get_table_ddl(self, table_name: str) -> str:
-        """
-        Retrieve the DDL for a specific table.
-
-        Args:
-            table_name (str): Name of the table to retrieve DDL for.
-
-        Returns:
-            str: The SQL DDL statement for the table.
-        """
+    def get_table_columns(self, table_name: str) -> List[tuple]:
+        """Retrieve the column definitions for a specific table."""
         if not self.connection:
             raise ConnectionError("Database connection is not established.")
-        
-        query = sql.SQL(
-            """
-            SELECT pg_catalog.pg_get_tabledef(oid)
-            FROM pg_catalog.pg_class
-            WHERE relname = %s;
-            """
-        )
+
+        query = """
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_name = %s AND table_schema = 'public';
+        """
         with self.connection.cursor() as cur:
             cur.execute(query, (table_name,))
-            result = cur.fetchone()
-            if not result:
-                raise ValueError(f"No DDL found for table {table_name}")
-            return result[0]
+            return cur.fetchall()
 
-    def get_all_ddl(self) -> List[str]:
-        """
-        Retrieve the DDL for all tables in the current database.
-
-        Returns:
-            List[str]: A list of SQL DDL statements for all tables.
-        """
+    def get_all_table_columns(self) -> Dict[str, List[Dict[str, str]]]:
+        """Retrieve the column definitions for all tables in the public schema."""
         if not self.connection:
             raise ConnectionError("Database connection is not established.")
-        
+
         query = """
-            SELECT relname, pg_catalog.pg_get_tabledef(oid)
-            FROM pg_catalog.pg_class
-            WHERE relkind = 'r' AND relnamespace IN (
-                SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = 'public'
-            );
+            SELECT table_name, column_name, data_type
+            FROM information_schema.columns
+            WHERE table_schema = 'public';
         """
         with self.connection.cursor() as cur:
             cur.execute(query)
             results = cur.fetchall()
-            return [ddl for _, ddl in results]
+            table_columns = {}
+            for table_name, column_name, data_type in results:
+                if table_name not in table_columns:
+                    table_columns[table_name] = []
+                table_columns[table_name].append({"column_name": column_name, "data_type": data_type})
+            return table_columns
 
     def close(self) -> None:
         """Close the database connection."""
         if self.connection:
             self.connection.close()
-            print("Database connection closed.")
+            logging.info("Database connection closed.")
         else:
-            print("No active database connection to close.")
+            logging.info("No active database connection to close.")

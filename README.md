@@ -1,6 +1,6 @@
 # syn-pg
 
-**syn-pg** is a Dockerized Python application designed to generate synthetic data at regular intervals for a PostgreSQL database. It leverages OpenAI's GPT to create SQL queries, executing them via transactions to ensure consistency. This tool is ideal for testing, building, and validating data pipelines.
+**syn-pg** is a Dockerized Python application designed to generate synthetic data at regular intervals for a PostgreSQL database. It leverages OpenAI's GPT to create SQL queries, executing them via transactions to ensure consistency. This tool is ideal for testing, building, and validating data pipelines or creating synthetic data in the data layer of an application.
 
 ## Features
 - Scheduled synthetic data generation for PostgreSQL.
@@ -12,7 +12,7 @@
 ## Requirements
 - Docker
 - OpenAI API key
-- Locally running PostgreSQL database
+- Locally running PostgreSQL database. Note: if you're looking for a good sample database, I recommending using the [northwind](https://github.com/pthom/northwind_psql) database.
 
 ## Installation
 
@@ -37,6 +37,6 @@ OPENAI_API_KEY=your_openai_api_key
 SCHEDULE_CRON=* * * * *  # Set your desired cron schedule
 ```
 
-4. Run docker container
+4. Update docker-compose.yml network to match your postgres network (line 22).
 
-`docker run --env-file .env syn-pg`
+6. Run docker container `docker compose up`
