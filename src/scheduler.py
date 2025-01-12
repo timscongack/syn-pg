@@ -5,8 +5,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from .db import Database
 from .gpt import GPTQueryGenerator
 from .data_generator import DataGenerator
+import logging
 
 load_dotenv()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 class Scheduler:
     def __init__(self):
@@ -14,33 +20,20 @@ class Scheduler:
         if not self.schedule:
             raise EnvironmentError("Missing SCHEDULE_CRON in .env file.")
         self.db = Database()
-        self.gpt = GPTQueryGenerator()
         self.data_generator = DataGenerator(self.db)
         self.scheduler = BackgroundScheduler()
 
     def execute_process(self) -> None:
         """
-        Fetches DDL information from the database, generates queries using GPT,
-        and executes the queries within a transaction.
+        Executes the data generation and query process using DataGenerator.
         """
+        logging.info("Scheduler started executing the process.")
         try:
-            self.db.connect()
-            ddl = self.db.get_all_ddl()
-            queries = self.gpt.generate_queries(ddl)
-            for query in queries:
-                try:
-                    with self.db.connection.cursor() as cur:
-                        cur.execute("BEGIN;")
-                        cur.execute(query)
-                        cur.execute("COMMIT;")
-                        print(f"Executed query successfully: {query}")
-                except Exception as e:
-                    self.db.connection.rollback()
-                    print(f"Failed to execute query: {query}\nError: {e}")
+            self.data_generator.generate_and_run_queries()
         except Exception as e:
-            print(f"Failed during process execution: {e}")
+            logging.error(f"An error occurred during execution: {e}")
         finally:
-            self.db.close()
+            logging.info("Process execution completed.")
 
     def start(self) -> None:
         """
@@ -49,7 +42,7 @@ class Scheduler:
         cron_params = self.parse_cron(self.schedule)
         self.scheduler.add_job(self.execute_process, "cron", **cron_params)
         self.scheduler.start()
-        print("Scheduler started.")
+        logging.info("Scheduler started with CRON schedule: %s", self.schedule)
 
     def parse_cron(self, cron_string: str) -> dict:
         """
@@ -71,4 +64,4 @@ class Scheduler:
         Stops the scheduler gracefully.
         """
         self.scheduler.shutdown()
-        print("Scheduler stopped successfully.")
+        logging.info("Scheduler stopped successfully.")

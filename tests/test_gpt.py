@@ -4,52 +4,65 @@ from src.gpt import GPTQueryGenerator
 
 
 class TestGPTQueryGenerator(unittest.TestCase):
-    @patch("src.gpt.openai")
+    @patch("src.gpt.openai.ChatCompletion.create")
     def test_generate_queries_good_response(self, mock_openai):
-        """Test generating queries with a well-formed response."""
-        mock_openai.Completion.create.return_value = {
-            "choices": [{"text": "['INSERT INTO test (id) VALUES (1);']"}]
+        mock_openai.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "['INSERT INTO test_table (id, name) VALUES (1, \"Test\");', "
+                                   "'UPDATE test_table SET name = \"Updated\" WHERE id = 1;', "
+                                   "'DELETE FROM test_table WHERE id = 1;']"
+                    }
+                }
+            ]
         }
 
-        generator = GPTQueryGenerator()
-        ddl = ["CREATE TABLE test (id SERIAL PRIMARY KEY);"]
-        queries = generator.generate_queries(ddl)
+        gpt_generator = GPTQueryGenerator()
+        ddl = ["CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT);"]
+        queries = gpt_generator.generate_queries(ddl, num_queries=3)
 
-        self.assertIn("INSERT INTO test (id) VALUES (1);", queries)
-        mock_openai.Completion.create.assert_called_once()
+        self.assertEqual(len(queries), 3)
+        self.assertIn("INSERT INTO test_table (id, name) VALUES (1, \"Test\");", queries)
+        self.assertIn("UPDATE test_table SET name = \"Updated\" WHERE id = 1;", queries)
+        self.assertIn("DELETE FROM test_table WHERE id = 1;", queries)
 
-    @patch("src.gpt.openai")
+    @patch("src.gpt.openai.ChatCompletion.create")
     def test_generate_queries_malformed_response(self, mock_openai):
-        """Test generating queries with a malformed response."""
-        mock_openai.Completion.create.return_value = {
-            "choices": [{"text": "INVALID_RESPONSE"}]
+        mock_openai.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "{'INSERT INTO test_table (id, name) VALUES (1, \"Test\");'}"
+                    }
+                }
+            ]
         }
 
-        generator = GPTQueryGenerator()
-        ddl = ["CREATE TABLE test (id SERIAL PRIMARY KEY);"]
+        gpt_generator = GPTQueryGenerator()
+        ddl = ["CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT);"]
+        queries = gpt_generator.generate_queries(ddl, num_queries=3)
 
-        with self.assertRaises(ValueError) as context:
-            generator.generate_queries(ddl)
-        self.assertIn("Malformed response", str(context.exception))
+        self.assertEqual(len(queries), 0)
 
-    @patch("src.gpt.openai")
-    def test_generate_queries_caller(self, mock_openai):
-        """Test that the caller sends the correct data to OpenAI."""
-        generator = GPTQueryGenerator()
-        ddl = ["CREATE TABLE test (id SERIAL PRIMARY KEY);"]
+    @patch("src.gpt.openai.ChatCompletion.create")
+    def test_generate_queries_error_handling(self, mock_openai):
+        mock_openai.side_effect = Exception("OpenAI API Error")
 
-        mock_openai.Completion.create.return_value = {
-            "choices": [{"text": "['INSERT INTO test (id) VALUES (1);']"}]
-        }
+        gpt_generator = GPTQueryGenerator()
+        ddl = ["CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT);"]
+        queries = gpt_generator.generate_queries(ddl, num_queries=3)
 
-        generator.generate_queries(ddl)
-        mock_openai.Completion.create.assert_called_once_with(
-            model="text-davinci-003",
-            prompt=generator.construct_prompt(ddl),
-            max_tokens=1500,
-            temperature=0.7,
-            n=1
-        )
+        self.assertEqual(len(queries), 0)
+
+    def test_construct_prompt(self):
+        gpt_generator = GPTQueryGenerator()
+        ddl = ["CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT);"]
+        prompt = gpt_generator.construct_prompt(ddl, num_queries=3, percent_inserts=50, percent_updates=30, percent_deletes=20)
+
+        self.assertIn("CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT);", prompt)
+        self.assertIn("generate 3 SQL queries", prompt)
+        self.assertIn("50% INSERTs, 30% UPDATEs, and 20% DELETEs", prompt)
 
 
 if __name__ == "__main__":

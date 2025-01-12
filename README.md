@@ -40,3 +40,6 @@ SCHEDULE_CRON=* * * * *  # Set your desired cron schedule
 4. Update docker-compose.yml network to match your postgres network (line 22).
 
 6. Run docker container `docker compose up`
+
+## To do
+- Add method to identify foreign key values so that transactions can be run without violating foreign key constraints.

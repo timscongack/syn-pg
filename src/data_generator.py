@@ -8,7 +8,7 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler("data_generator.log"),
-        logging.StreamHandler()
+        logging.StreamHandler(),
     ]
 )
 
@@ -27,22 +27,17 @@ class DataGenerator:
         try:
             self.db.connect()
             logging.info("Connected to the database.")
-
             ddl = self.db.get_all_ddl()
             logging.info(f"Retrieved DDL: {ddl}")
-
             queries = self.gpt.generate_queries(ddl)
             logging.info(f"Generated {len(queries)} queries.")
-
             for query in queries:
                 try:
                     with self.db.connection.cursor() as cur:
                         cur.execute("BEGIN;")
                         cur.execute(query)
-                        row_count = cur.rowcount
                         cur.execute("COMMIT;")
                         logging.info(f"Executed query successfully: {query}")
-                        logging.info(f"Rows affected: {row_count}")
                 except Exception as e:
                     logging.error(f"Failed to execute query: {query}\nError: {e}")
                     self.db.connection.rollback()
